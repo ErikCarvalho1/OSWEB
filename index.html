@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de OS - TI (Firebase)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; }
+        body { background-color: #f4f6f9; color: #333; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; }
+        button { background-color: #3498db; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        button:hover { background-color: #2980b9; }
+        .btn-success { background-color: #2ecc71; }
+        .form-os { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: none; margin-bottom: 30px; }
+        .form-section { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 25px; }
+        .section-title { grid-column: 1 / -1; color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 5px; font-size: 18px; font-weight: bold; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group.full-width { grid-column: 1 / -1; }
+        label { margin-bottom: 5px; font-weight: 600; font-size: 14px; color: #7f8c8d; }
+        input, select, textarea { padding: 10px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 14px; }
+        .historico-section { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f9fa; }
+        .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .badge-Aberta { background: #e3f2fd; color: #0d47a1; }
+        #area-impressao { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Gerenciador de OS - TI-103</h1>
+        <button id="btnNovaOS" onclick="abrirNovaOS()">➕ NOVA OS</button>
+    </header>
+
+    <form id="formOS" class="form-os" onsubmit="salvarOS(event)">
+        <div class="form-section">
+            <div class="section-title">Controle da Ordem de Serviço</div>
+            <div class="form-group">
+                <label>Número da OS</label>
+                <input type="text" id="numero_os" readonly style="background: #eee; font-weight: bold; color: #d35400;">
+            </div>
+            <div class="form-group">
+                <label>Técnico Responsável *</label>
+                <input type="text" id="nome_tecnico" required>
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select id="status">
+                    <option value="Aberta">Aberta</option>
+                    <option value="Em Análise">Em Análise</option>
+                    <option value="Aguardando Aprovação">Aguardando Aprovação</option>
+                    <option value="Em Andamento">Em Andamento</option>
+                    <option value="Concluída">Concluída</option>
+                    <option value="Entregue">Entregue</option>
+                    <option value="Cancelada">Cancelada</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="section-title">Dados do Equipamento</div>
+            <div class="form-group">
+                <label>Equipamento</label>
+                <input type="text" id="equipamento">
+            </div>
+            <div class="form-group">
+                <label>Marca</label>
+                <input type="text" id="marca">
+            </div>
+            <div class="form-group">
+                <label>Modelo</label>
+                <input type="text" id="modelo">
+            </div>
+            <div class="form-group">
+                <label>Nº de Série / Patrimônio</label>
+                <input type="text" id="numero_serie_patrimonio">
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="section-title">Informações Técnicas & Valores</div>
+            <div class="form-group">
+                <label>Sistema Operacional</label>
+                <input type="text" id="sistema_operacional">
+            </div>
+            <div class="form-group">
+                <label>Senha de Acesso</label>
+                <input type="text" id="senha_acesso">
+            </div>
+            <div class="form-group">
+                <label>Valor do Serviço (R$)</label>
+                <input type="number" id="valor_servico" step="0.01" value="0.00">
+            </div>
+            <div class="form-group full-width">
+                <label>Acessórios Recebidos</label>
+                <textarea id="acessorios_recebidos" rows="2"></textarea>
+            </div>
+            <div class="form-group full-width">
+                <label>Problema Relatado</label>
+                <textarea id="problema_relatado" rows="3"></textarea>
+            </div>
+            <div class="form-group full-width">
+                <label>Diagnóstico Inicial</label>
+                <textarea id="diagnostico_inicial" rows="3"></textarea>
+            </div>
+            <div class="form-group full-width">
+                <label>Observações</label>
+                <textarea id="observacoes" rows="2"></textarea>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-success">💾 Salvar no Firebase</button>
+        <button type="button" style="background:#95a5a6" onclick="fecharFormulario()">Cancelar</button>
+    </form>
+
+    <div class="historico-section">
+        <h2>Histórico de Ordens de Serviço (Realtime)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Nº OS</th>
+                    <th>Equipamento</th>
+                    <th>Técnico</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabelaOS"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="area-impressao"></div>
+
+<script type="module">
+    // URLs de Importação Corrigidas para rodar direto no navegador (CDN gstatic)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAkViY3hWVnN10xgCFQ5xIkPnRjd8EJhu0",
+      authDomain: "os-ti103.firebaseapp.com",
+      projectId: "os-ti103",
+      storageBucket: "os-ti103.firebasestorage.app",
+      messagingSenderId: "560661346530",
+      appId: "1:560661346530:web:374bd64164ea34aa83c6bb",
+      measurementId: "G-Y56BEDVJDT"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const db = getFirestore(app);
+    const osCollection = collection(db, "ordens_servico");
+
+    window.abrirNovaOS = () => {
+        document.getElementById('formOS').style.display = 'block';
+        const numOS = 'OS' + new Date().getFullYear() + Date.now().toString().slice(-6);
+        document.getElementById('numero_os').value = numOS;
+        document.getElementById('btnNovaOS').style.display = 'none';
+    };
+
+    window.fecharFormulario = () => {
+        document.getElementById('formOS').reset();
+        document.getElementById('formOS').style.display = 'none';
+        document.getElementById('btnNovaOS').style.display = 'block';
+    };
+
+    window.salvarOS = async (e) => {
+        e.preventDefault();
+
+        const dadosOS = {
+            numero_os: document.getElementById('numero_os').value,
+            equipamento: document.getElementById('equipamento').value,
+            marca: document.getElementById('marca').value,
+            modelo: document.getElementById('modelo').value,
+            numero_serie_patrimonio: document.getElementById('numero_serie_patrimonio').value,
+            sistema_operacional: document.getElementById('sistema_operacional').value,
+            acessorios_recebidos: document.getElementById('acessorios_recebidos').value,
+            senha_acesso: document.getElementById('senha_acesso').value,
+            problema_relatado: document.getElementById('problema_relatado').value,
+            diagnostico_inicial: document.getElementById('diagnostico_inicial').value,
+            nome_tecnico: document.getElementById('nome_tecnico').value,
+            valor_servico: parseFloat(document.getElementById('valor_servico').value) || 0,
+            status: document.getElementById('status').value,
+            observacoes: document.getElementById('observacoes').value,
+            data_entrada: new Date().toISOString()
+        };
+
+        try {
+            await addDoc(osCollection, dadosOS);
+            alert('OS salva com sucesso no Firebase!');
+            fecharFormulario();
+        } catch (error) {
+            console.error("Erro ao salvar:", error);
+            alert('Erro ao salvar no Firebase. Verifique o console.');
+        }
+    };
+
+    const q = query(osCollection, orderBy("data_entrada", "desc"));
+    let listaDeOS = []; 
+
+    onSnapshot(q, (snapshot) => {
+        const tabela = document.getElementById('tabelaOS');
+        tabela.innerHTML = '';
+        listaDeOS = [];
+
+        snapshot.forEach((doc) => {
+            const os = doc.data();
+            listaDeOS.push(os);
+
+            tabela.innerHTML += `
+                <tr>
+                    <td><strong>${os.numero_os}</strong></td>
+                    <td>${os.equipamento || 'N/A'}</td>
+                    <td>${os.nome_tecnico}</td>
+                    <td><span class="badge badge-${os.status}">${os.status}</span></td>
+                    <td>
+                        <button onclick="gerarPDF('${os.numero_os}')" style="padding: 5px 10px; font-size: 12px; background:#e74c3c">📄 Baixar PDF</button>
+                    </td>
+                </tr>
+            `;
+        });
+    });
+
+    window.gerarPDF = (numero_os) => {
+        const os = listaDeOS.find(item => item.numero_os === numero_os);
+        if(!os) return;
+
+        const areaImpressao = document.getElementById('area-impressao');
+        areaImpressao.innerHTML = `
+            <div style="padding: 40px; color: #333;">
+                <h1 style="text-align:center; color:#2c3e50;">ORDEM DE SERVIÇO DE TI</h1>
+                <hr style="margin: 20px 0;">
+                <p><strong>Número da OS:</strong> ${os.numero_os}</p>
+                <p><strong>Status:</strong> ${os.status}</p>
+                <p><strong>Técnico Responsável:</strong> ${os.nome_tecnico}</p>
+                <p><strong>Data de Entrada:</strong> ${new Date(os.data_entrada).toLocaleString('pt-BR')}</p>
+                
+                <h3 style="margin-top:20px; color:#2c3e50; border-bottom: 1px solid #ccc;">Dados do Equipamento</h3>
+                <p><strong>Aparelho:</strong> ${os.equipamento || ''} | <strong>Marca:</strong> ${os.marca || ''} | <strong>Modelo:</strong> ${os.modelo || ''}</p>
+                <p><strong>Nº Série/Patrimônio:</strong> ${os.numero_serie_patrimonio || ''}</p>
+                <p><strong>S.O:</strong> ${os.sistema_operacional || ''} | <strong>Senha:</strong> ${os.senha_acesso || ''}</p>
+                
+                <h3 style="margin-top:20px; color:#2c3e50; border-bottom: 1px solid #ccc;">Informações Técnicas</h3>
+                <p><strong>Acessórios:</strong> ${os.acessorios_recebidos || 'Nenhum'}</p>
+                <p><strong>Problema:</strong> ${os.problema_relatado || ''}</p>
+                <p><strong>Diagnóstico:</strong> ${os.diagnostico_inicial || ''}</p>
+                
+                <h3 style="margin-top:20px; color:#2c3e50; border-bottom: 1px solid #ccc;">Valores e Obs</h3>
+                <p><strong>Valor do Serviço:</strong> R$ ${parseFloat(os.valor_servico).toFixed(2)}</p>
+                <p><strong>Observações:</strong> ${os.observacoes || 'Nenhuma'}</p>
+                <br><br><br>
+                <p style="text-align:center;">_________________________________________________</p>
+                <p style="text-align:center; font-size:12px;">Assinatura do Técnico / Responsável</p>
+            </div>
+        `;
+
+        const opcoes = {
+            margin:       10,
+            filename:     `OS_${os.numero_os}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opcoes).from(areaImpressao).save();
+    };
+</script>
+</body>
+</html>
