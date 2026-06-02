@@ -77,6 +77,9 @@
                         <button id="btn-pdf" type="button" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg flex items-center gap-2 text-xs md:text-sm font-semibold transition">
                             <i data-lucide="download" class="w-4 h-4"></i> Baixar PDF
                         </button>
+                        <button id="btn-excluir" type="button" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg flex items-center gap-2 text-xs md:text-sm font-semibold transition shadow-sm">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i> Excluir
+                        </button>
                     </div>
                 </div>
  
@@ -179,7 +182,8 @@
  
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, doc, setDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        // ADICIONADO deleteDoc NA IMPORTAÇÃO DO FIRESTORE
+        import { getFirestore, collection, doc, setDoc, deleteDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAkViY3hWVnN10xgCFQ5xIkPnRjd8EJhu0",
@@ -209,6 +213,7 @@
         const txtDataAbertura = document.getElementById('os-data-abertura');
         const badgeTipo = document.getElementById('os-badge-tipo');
         const btnPDF = document.getElementById('btn-pdf');
+        const btnExcluir = document.getElementById('btn-excluir'); // MAPEADO BOTÃO EXCLUIR
         const statusSalvamento = document.getElementById('status-salvamento');
  
         const tabSO = document.getElementById('tab-so');
@@ -268,7 +273,6 @@
             await setDoc(doc(db, "ordens_servico", novoNumero.toString()), osAtual);
             carregarFormulario(osAtual);
             
-            // Fecha o menu após criar no mobile para ver a nova OS direto
             if (!sidebar.classList.contains('-translate-x-full')) alternarMenu();
         });
  
@@ -401,7 +405,6 @@
                     carregarFormulario(os);
                     renderizarHistorico();
                     
-                    // Se o menu estiver aberto, fecha automaticamente após selecionar a OS (apenas celular)
                     if (!sidebar.classList.contains('-translate-x-full')) alternarMenu();
                 });
  
@@ -445,6 +448,31 @@
                 alert("A biblioteca de PDF ainda está sendo carregada.");
                 acoes.style.visibility = 'visible';
                 if(abasBarra) abasBarra.style.display = 'flex';
+            }
+        });
+
+        // LÓGICA E EVENTO DE EXCLUSÃO DA ORDEM DE SERVIÇO
+        btnExcluir.addEventListener('click', async () => {
+            if (!osAtual) return;
+
+            const confirmacao = confirm(`Atenção: Tem certeza absoluta que deseja excluir permanentemente a OS Nº ${osAtual.numero}?`);
+            
+            if (confirmacao) {
+                try {
+                    // Deleta o documento diretamente do Firebase Firestore
+                    await deleteDoc(doc(db, "ordens_servico", osAtual.numero.toString()));
+                    
+                    // Reseta os estados visuais da aplicação
+                    osAtual = null;
+                    areaOS.classList.add('hidden');
+                    estadoVazio.classList.remove('hidden');
+                    formOS.reset();
+                    
+                    alert("Ordem de Serviço removida com sucesso!");
+                } catch (error) {
+                    console.error("Erro ao deletar OS:", error);
+                    alert("Não foi possível excluir o registro da nuvem.");
+                }
             }
         });
     </script>
