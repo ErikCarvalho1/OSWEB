@@ -110,7 +110,7 @@ git clone https://github.com/ErikCarvalho1/OSWEB.git
 Entre na pasta do projeto:
 
 ```bash
-cd SEU-REPOSITORIO
+cd OSWEb
 ```
 
 Abrir o arquivo:
