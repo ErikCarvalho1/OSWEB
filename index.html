@@ -21,7 +21,7 @@
     </header>
 
     <div class="flex h-screen overflow-hidden pt-14 md:pt-0">
-       
+        
         <aside id="sidebar" class="fixed inset-y-0 left-0 w-72 md:w-80 bg-gray-900 text-white flex flex-col justify-between shadow-xl flex-shrink-0 z-50 transform -translate-x-full md:translate-x-0 md:static transition-transform duration-300 ease-in-out">
             <div class="p-5 overflow-y-auto flex-1">
                 <div class="flex items-center justify-between border-b border-gray-700 pb-4 mb-6">
@@ -33,27 +33,30 @@
                         <i data-lucide="x" class="w-6 h-6"></i>
                     </button>
                 </div>
-               
+                
                 <button id="btn-nova-os" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition duration-200 shadow-md">
                     <i data-lucide="plus-circle" class="w-5 h-5"></i>
                     NOVA OS
                 </button>
  
                 <div class="mt-8">
-                    <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Histórico Permanente (Firebase)</h2>
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Histórico Permanente</h2>
+                        <span id="contador-os" class="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full font-mono">0 encontradas</span>
+                    </div>
                     <div id="lista-historico" class="space-y-2 max-h-[60vh] md:max-h-[65vh] overflow-y-auto pr-1">
-                        </div>
+                    </div>
                 </div>
             </div>
             <div class="p-4 bg-gray-950 text-center text-xs text-gray-500 border-t border-gray-800">
-                Sistema de OS de TI v2.1
+                Sistema de OS de TI v2.2
             </div>
         </aside>
  
         <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden"></div>
 
         <main class="flex-1 overflow-y-auto p-4 md:p-8">
-           
+            
             <div id="estado-vazio" class="h-full flex flex-col items-center justify-center text-gray-400 py-12">
                 <i data-lucide="layout" class="w-16 h-16 mb-4 stroke-1"></i>
                 <p class="text-lg font-medium text-center">Nenhuma Ordem de Serviço selecionada.</p>
@@ -61,7 +64,7 @@
             </div>
  
             <div id="area-os" class="hidden max-w-4xl mx-auto bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden transition-all duration-300">
-               
+                
                 <div id="os-header-print" class="bg-gray-900 text-white p-4 md:p-6 flex flex-col sm:flex-row gap-4 justify-between sm:items-center">
                     <div>
                         <div class="flex items-center gap-2">
@@ -93,7 +96,7 @@
                 </div>
  
                 <form id="form-os" class="p-4 md:p-6 space-y-6" onsubmit="return false;">
-                   
+                    
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border-b pb-4">
                         <div>
                             <label class="block text-xs font-bold text-gray-700 mb-1">Técnico Responsável</label>
@@ -182,8 +185,7 @@
  
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        // ADICIONADO deleteDoc NA IMPORTAÇÃO DO FIRESTORE
-        import { getFirestore, collection, doc, setDoc, deleteDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAkViY3hWVnN10xgCFQ5xIkPnRjd8EJhu0",
@@ -197,13 +199,12 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const osCollection = collection(db, "ordens_servico");
 
         let bancoOS = [];
         let osAtual = null;
         let timeoutSalvamento = null;
  
-        // Elementos UI
+        // UI
         const btnNovaOS = document.getElementById('btn-nova-os');
         const estadoVazio = document.getElementById('estado-vazio');
         const areaOS = document.getElementById('area-os');
@@ -213,19 +214,18 @@
         const txtDataAbertura = document.getElementById('os-data-abertura');
         const badgeTipo = document.getElementById('os-badge-tipo');
         const btnPDF = document.getElementById('btn-pdf');
-        const btnExcluir = document.getElementById('btn-excluir'); // MAPEADO BOTÃO EXCLUIR
+        const btnExcluir = document.getElementById('btn-excluir');
         const statusSalvamento = document.getElementById('status-salvamento');
- 
+        const contadorOS = document.getElementById('contador-os');
+
         const tabSO = document.getElementById('tab-so');
         const tabTestes = document.getElementById('tab-testes');
 
-        // Elementos de Controle do Menu Responsivo
         const sidebar = document.getElementById('sidebar');
         const sidebarOverlay = document.getElementById('sidebar-overlay');
         const btnMenuToggle = document.getElementById('btn-menu-toggle');
         const btnFecharMenu = document.getElementById('btn-fechar-menu');
 
-        // Funções para abrir/fechar o menu em telas pequenas
         function alternarMenu() {
             sidebar.classList.toggle('-translate-x-full');
             sidebarOverlay.classList.toggle('hidden');
@@ -236,26 +236,70 @@
         sidebarOverlay.addEventListener('click', alternarMenu);
  
         if (typeof lucide !== 'undefined') { lucide.createIcons(); }
- 
-        const q = query(osCollection, orderBy("timestamp", "desc"));
-        onSnapshot(q, (snapshot) => {
-            bancoOS = [];
-            snapshot.forEach((doc) => {
-                bancoOS.push(doc.data());
-            });
-            renderizarHistorico();
+
+        // Normalizador flexível para aceitar dados em formatos antigos
+        function normalizarOS(docSnap) {
+            const d = docSnap.data() || {};
+            const numExtraido = parseInt(d.numero || d.num || d.numeroOS || d.id || docSnap.id) || 1000;
             
-            if (osAtual) {
-                const osAtualizada = bancoOS.find(o => o.numero === osAtual.numero);
-                if (osAtualizada && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-                    osAtual = osAtualizada;
-                    carregarFormulario(osAtualizada);
+            return {
+                docId: docSnap.id,
+                numero: numExtraido,
+                data: d.data || d.dataAbertura || d.data_abertura || '--/--/----',
+                timestamp: d.timestamp || d.created_at || numExtraido,
+                tipoAba: d.tipoAba || d.aba || d.tipo || 'SO',
+                tecnico: d.tecnico || d.tecnicoResponsavel || '',
+                empresa: d.empresa || d.cliente || d.nomeCliente || d.razaoSocial || '',
+                contatoNome: d.contatoNome || d.contato || d.nomeContato || '',
+                telefone: d.telefone || d.whatsapp || d.fone || '',
+                email: d.email || '',
+                modelo: d.modelo || d.equipamento || d.ativo || '',
+                serie: d.serie || d.numeroSerie || d.patrimonio || '',
+                soVersao: d.soVersao || d.sistema || d.versaoSO || '',
+                hardwares: d.hardwares || d.hardware || d.pecas || '',
+                problema: d.problema || d.defeito || d.reclamacao || '',
+                diagnostico: d.diagnostico || d.solucao || d.analise || '',
+                status: d.status || 'Em Aberto'
+            };
+        }
+
+        // Procura em múltiplas coleções para encontrar dados antigos perdidos
+        const colecoesPossiveis = ["ordens_servico", "ordem_servico", "OS", "os", "ordens"];
+        
+        colecoesPossiveis.forEach((nomeColecao) => {
+            const colRef = collection(db, nomeColecao);
+            onSnapshot(colRef, (snapshot) => {
+                snapshot.forEach((docSnap) => {
+                    const osNormalizada = normalizarOS(docSnap);
+                    
+                    // Substitui ou insere a OS no array principal
+                    const idx = bancoOS.findIndex(o => o.numero === osNormalizada.numero || o.docId === osNormalizada.docId);
+                    if (idx >= 0) {
+                        bancoOS[idx] = osNormalizada;
+                    } else {
+                        bancoOS.push(osNormalizada);
+                    }
+                });
+
+                // Ordenar por número/timestamp decrescente
+                bancoOS.sort((a, b) => (b.numero || 0) - (a.numero || 0));
+
+                renderizarHistorico();
+
+                if (osAtual) {
+                    const osAtualizada = bancoOS.find(o => o.numero === osAtual.numero);
+                    if (osAtualizada && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                        osAtual = osAtualizada;
+                        carregarFormulario(osAtualizada);
+                    }
                 }
-            }
+            }, (error) => {
+                console.warn(`Aviso ao ler coleção ${nomeColecao}:`, error);
+            });
         });
  
         btnNovaOS.addEventListener('click', async () => {
-            const novoNumero = bancoOS.length > 0 ? Math.max(...bancoOS.map(o => o.numero)) + 1 : 1001;
+            const novoNumero = bancoOS.length > 0 ? Math.max(...bancoOS.map(o => o.numero || 0)) + 1 : 1001;
            
             const agora = new Date();
             const dataAtual = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
@@ -303,7 +347,7 @@
             areaOS.classList.remove('hidden');
  
             txtNumeroOS.innerText = os.numero;
-            txtDataAbertura.innerText = os.data;
+            txtDataAbertura.innerText = os.data || '--/--/----';
  
             document.getElementById('os-tecnico').value = os.tecnico || '';
             document.getElementById('os-empresa').value = os.empresa || '';
@@ -362,7 +406,8 @@
             clearTimeout(timeoutSalvamento);
             timeoutSalvamento = setTimeout(async () => {
                 try {
-                    await setDoc(doc(db, "ordens_servico", osAtual.numero.toString()), osAtual);
+                    const docRefId = osAtual.docId || osAtual.numero.toString();
+                    await setDoc(doc(db, "ordens_servico", docRefId), osAtual, { merge: true });
                     statusSalvamento.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i> Sincronizado`;
                     statusSalvamento.className = "text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 md:px-3 py-1.5 md:py-2 rounded-lg flex items-center gap-1 font-medium";
                 } catch (error) {
@@ -376,6 +421,7 @@
  
         function renderizarHistorico() {
             listaHistorico.innerHTML = '';
+            contadorOS.innerText = `${bancoOS.length} encontradas`;
  
             bancoOS.forEach(os => {
                 const item = document.createElement('div');
@@ -387,16 +433,18 @@
                 let bAba = os.tipoAba === 'SO' ? 'border-l-4 border-blue-500' : 'border-l-4 border-purple-500';
                 const ativoAtualmente = osAtual && osAtual.numero === os.numero ? 'ring-2 ring-blue-500 bg-gray-700' : 'bg-gray-800 hover:bg-gray-700';
  
+                const dataExibicao = os.data ? os.data.split(' ')[0] : '--/--/----';
+
                 item.className = `p-3 rounded-lg flex flex-col gap-1 cursor-pointer transition text-left ${bAba} ${ativoAtualmente}`;
                 item.innerHTML = `
                     <div class="flex justify-between items-center">
-                        <span class="font-mono font-bold text-xs text-blue-400">#${os.numero} <span class="text-[9px] text-gray-400">(${os.tipoAba})</span></span>
-                        <span class="text-[9px] px-1.5 py-0.5 rounded font-bold ${bStatus}">${os.status}</span>
+                        <span class="font-mono font-bold text-xs text-blue-400">#${os.numero} <span class="text-[9px] text-gray-400">(${os.tipoAba || 'SO'})</span></span>
+                        <span class="text-[9px] px-1.5 py-0.5 rounded font-bold ${bStatus}">${os.status || 'Em Aberto'}</span>
                     </div>
-                    <p class="text-xs text-gray-200 font-medium truncate">${(os.empresa || os.contatoNome || 'Nova OS (Vazia)').trim()}</p>
+                    <p class="text-xs text-gray-200 font-medium truncate">${(os.empresa || os.contatoNome || 'OS sem título').trim()}</p>
                     <div class="flex justify-between text-[10px] text-gray-400 mt-1">
-                        <span class="truncate max-w-[120px]">${os.modelo || 'Sem modelo'}</span>
-                        <span>${os.data.split(' ')[0]}</span>
+                        <span class="truncate max-w-[120px]">${os.modelo || 'Sem equipamento'}</span>
+                        <span>${dataExibicao}</span>
                     </div>
                 `;
  
@@ -425,7 +473,7 @@
             if(abasBarra) abasBarra.style.display = 'none';
  
             const nomeIdentificador = osAtual.empresa || osAtual.contatoNome || 'Sem_Nome';
-            const nomeArquivo = `OS_${osAtual.numero}_${osAtual.tipoAba}_${nomeIdentificador.replace(/\s+/g, '_')}.pdf`;
+            const nomeArquivo = `OS_${osAtual.numero}_${osAtual.tipoAba || 'SO'}_${nomeIdentificador.replace(/\s+/g, '_')}.pdf`;
  
             const config = {
                 margin:       [10, 10, 10, 10],
@@ -451,7 +499,6 @@
             }
         });
 
-        // LÓGICA E EVENTO DE EXCLUSÃO DA ORDEM DE SERVIÇO
         btnExcluir.addEventListener('click', async () => {
             if (!osAtual) return;
 
@@ -459,14 +506,16 @@
             
             if (confirmacao) {
                 try {
-                    // Deleta o documento diretamente do Firebase Firestore
-                    await deleteDoc(doc(db, "ordens_servico", osAtual.numero.toString()));
+                    const docRefId = osAtual.docId || osAtual.numero.toString();
+                    await deleteDoc(doc(db, "ordens_servico", docRefId));
                     
-                    // Reseta os estados visuais da aplicação
+                    bancoOS = bancoOS.filter(o => o.numero !== osAtual.numero && o.docId !== docRefId);
+                    
                     osAtual = null;
                     areaOS.classList.add('hidden');
                     estadoVazio.classList.remove('hidden');
                     formOS.reset();
+                    renderizarHistorico();
                     
                     alert("Ordem de Serviço removida com sucesso!");
                 } catch (error) {
